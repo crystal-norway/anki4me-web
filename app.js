@@ -84,9 +84,13 @@
   });
 
   // —— 加载数据：优先 manifest.json（多词书），回退 cards.json（单词书） ——
+  // DATA_BASE 指向 jsDelivr CDN（GitHub 仓库），JSON 文件也走 CDN
+  // 本地预览可设置为空字符串走相对路径
+  var DATA_BASE = 'https://cdn.jsdelivr.net/gh/crystal-norway/anki4me-web@main/';
+
   var MANIFEST = null;
 
-  fetch('manifest.json')
+  fetch(DATA_BASE + 'manifest.json')
     .then(function (r) {
       if (!r.ok) throw new Error('no manifest');
       return r.json();
@@ -104,7 +108,7 @@
     });
 
   function loadBook(file, cb) {
-    fetch(file)
+    fetch(DATA_BASE + file)
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
