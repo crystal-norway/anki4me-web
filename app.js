@@ -87,10 +87,12 @@
   // DATA_BASE 指向 jsDelivr CDN（GitHub 仓库），JSON 文件也走 CDN
   // 本地预览可设置为空字符串走相对路径
   var DATA_BASE = 'https://cdn.jsdelivr.net/gh/crystal-norway/anki4me-web@main/';
+  // 缓存破坏版本号，更新 manifest 后递增
+  var CACHE_VER = '2';
 
   var MANIFEST = null;
 
-  fetch(DATA_BASE + 'manifest.json')
+  fetch(DATA_BASE + 'manifest.json?v=' + CACHE_VER)
     .then(function (r) {
       if (!r.ok) throw new Error('no manifest');
       return r.json();
