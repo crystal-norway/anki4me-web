@@ -1,0 +1,405 @@
+/* Anki 卡片轮播 - 不背单词风格（与 HTML/JS 解耦） */
+
+/* —— 设计变量：不背单词风格 —— */
+:root {
+  /* 背景层：模拟壁纸的柔和渐变 */
+  --bg-grad-1: #e8f4f8;
+  --bg-grad-2: #d4ecf2;
+  --bg-grad-3: #f0f4f8;
+
+  /* 卡片：半透明白 + 毛玻璃 */
+  --card-bg: rgba(255, 255, 255, 0.72);
+  --card-border: rgba(255, 255, 255, 0.6);
+  /* 控制条/键盘提示：毛玻璃面板 */
+  --bar-bg: rgba(255, 255, 255, 0.72);
+  --bar-border: rgba(255, 255, 255, 0.5);
+  /* 控件背景（select/input/button） */
+  --input-bg: rgba(255, 255, 255, 0.6);
+  --input-border: rgba(180, 200, 220, 0.4);
+  /* 药丸开关圆点 */
+  --toggle-dot: #fff;
+  /* 音频控件 */
+  --audio-filter: none;
+
+  /* 文字层级 */
+  --text: #2c3e50;
+  --text-strong: #1a2332;
+  --muted: #7f8c9a;
+  --muted-soft: #a5b1bf;
+
+  /* 强调色：青绿系（不背单词标志色） */
+  --accent: #00bfa5;
+  --accent-soft: #1de9b6;
+  --accent-deep: #00897b;
+  --accent-bg: rgba(0, 191, 165, 0.08);
+
+  /* 正反面：极浅区分 */
+  --front-bg: rgba(255, 255, 255, 0.45);
+  --back-bg: rgba(245, 247, 250, 0.55);
+
+  /* 分割线 */
+  --divider: rgba(180, 200, 220, 0.35);
+
+  /* 阴影 */
+  --shadow-card: 0 8px 32px rgba(31, 38, 135, 0.12);
+  --shadow-soft: 0 2px 12px rgba(31, 38, 135, 0.06);
+  --shadow-hover: 0 12px 40px rgba(0, 191, 165, 0.18);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0; padding: 0; min-height: 100vh;
+  background:
+    radial-gradient(ellipse at top left, var(--bg-grad-1) 0%, transparent 55%),
+    radial-gradient(ellipse at bottom right, var(--bg-grad-2) 0%, transparent 55%),
+    linear-gradient(135deg, var(--bg-grad-3) 0%, #e0eaf2 100%);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", "Segoe UI", sans-serif;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  letter-spacing: 0.01em;
+}
+
+/* —— 禅模式：顶部触发区 —— */
+.hover-zone {
+  position: fixed; top: 0; left: 0; right: 0; height: 8px;
+  z-index: 50; cursor: pointer;
+}
+
+/* —— 控制条：毛玻璃质感，默认隐藏 —— */
+.topbar {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 14px 24px;
+  background: var(--bar-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--bar-border);
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .32s cubic-bezier(.22,.61,.36,1), opacity .32s ease;
+  box-shadow: 0 4px 20px rgba(31, 38, 135, 0.08);
+}
+.topbar.visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.topbar .title {
+  font-size: 15px; font-weight: 600; color: var(--accent-deep);
+  letter-spacing: 0.02em;
+}
+.topbar .sub { color: var(--muted); font-size: 12px; font-weight: 400; }
+.topbar .group { display: flex; align-items: center; gap: 8px; }
+.topbar label {
+  font-size: 12px; color: var(--muted); font-weight: 500;
+  letter-spacing: 0.03em;
+}
+.topbar select, .topbar input[type=number] {
+  background: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  padding: 5px 10px; font-size: 13px;
+  transition: all .2s;
+}
+.topbar select:focus, .topbar input[type=number]:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+.topbar input[type=range] {
+  width: 140px; vertical-align: middle;
+  accent-color: var(--accent);
+}
+.topbar button {
+  background: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  padding: 6px 16px; cursor: pointer; font-size: 13px;
+  font-weight: 500;
+  transition: all .2s cubic-bezier(.22,.61,.36,1);
+}
+.topbar button:hover {
+  border-color: var(--accent);
+  color: var(--accent-deep);
+  background: rgba(0, 191, 165, 0.06);
+  transform: translateY(-1px);
+}
+.topbar button:active { transform: translateY(0); }
+.topbar button.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 191, 165, 0.3);
+}
+
+.progress {
+  flex: 1; height: 3px;
+  background: rgba(180, 200, 220, 0.3);
+  border-radius: 2px;
+  overflow: hidden; min-width: 100px; max-width: 300px;
+}
+.progress .bar {
+  height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-soft));
+  width: 0%; transition: width .1s linear;
+  border-radius: 2px;
+}
+
+/* —— 进度条：禅模式下底部极细线 —— */
+.bottom-progress {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 2px;
+  background: rgba(180, 200, 220, 0.25); z-index: 40;
+}
+.bottom-progress .bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-soft));
+  width: 0%; transition: width .1s linear;
+}
+
+/* —— 卡片舞台 —— */
+.stage {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 40px 28px; min-height: 0;
+}
+
+/* —— 卡片：毛玻璃质感，大圆角 —— */
+.card {
+  width: 100%; max-width: 920px; max-height: calc(100vh - 80px);
+  background: var(--card-bg);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-radius: 24px;
+  border: 1px solid var(--card-border);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  box-shadow: var(--shadow-card);
+  animation: cardIn .4s cubic-bezier(.22,.61,.36,1);
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(16px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* —— 卡片元信息 —— */
+.card .meta {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--divider);
+  font-size: 12px; color: var(--muted);
+  font-weight: 500;
+}
+.card .meta .idx {
+  color: var(--accent-deep); font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.card .meta .deck { flex: 1; }
+.card .meta .tags {
+  color: var(--accent);
+  background: var(--accent-bg);
+  padding: 2px 10px; border-radius: 10px;
+  font-size: 11px;
+}
+
+/* —— 卡片正反面 —— */
+.card .body {
+  display: grid; grid-template-columns: 1fr 1px 1fr;
+  overflow: auto; min-height: 220px;
+}
+.card .face { padding: 36px; overflow: auto; }
+.card .face .label {
+  font-size: 10px; color: var(--muted-soft);
+  text-transform: uppercase;
+  letter-spacing: 2px; margin-bottom: 14px;
+  font-weight: 600;
+}
+.card .face .inner {
+  font-size: 19px; line-height: 1.75;
+  color: var(--text-strong);
+  font-weight: 400;
+}
+.card .face .inner img { max-width: 100%; border-radius: 8px; }
+.card .face .inner audio {
+  width: 100%; margin: 8px 0;
+  border-radius: 8px;
+}
+.card .face.front { background: var(--front-bg); }
+.card .face.back  { background: var(--back-bg); }
+.card .divider { background: var(--divider); }
+
+@media (max-width: 720px) {
+  .card .body { grid-template-columns: 1fr; grid-template-rows: auto 1px auto; }
+  .card .divider { height: 1px; width: 100%; }
+  .card .face { padding: 24px; }
+  .card .face .inner { font-size: 17px; }
+  .card { border-radius: 18px; max-height: calc(100vh - 48px); }
+}
+
+.empty {
+  color: var(--muted); font-size: 16px;
+  text-align: center; padding: 60px;
+}
+.error {
+  color: #e74c3c; padding: 40px; text-align: center; font-size: 16px;
+  background: rgba(231, 76, 60, 0.06); border-radius: 12px;
+}
+
+/* —— 键盘提示：毛玻璃，底部滑入 —— */
+.keyboard-hint {
+  text-align: center; color: var(--muted); font-size: 11px;
+  padding: 10px;
+  background: var(--bar-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid var(--bar-border);
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
+  transform: translateY(100%);
+  opacity: 0;
+  transition: transform .32s cubic-bezier(.22,.61,.36,1), opacity .32s ease;
+  letter-spacing: 0.03em;
+}
+.keyboard-hint.visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+kbd {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 5px;
+  padding: 1px 7px; font-size: 11px;
+  font-family: "SF Mono", Consolas, monospace;
+  color: var(--accent-deep);
+  box-shadow: 0 1px 2px rgba(31, 38, 135, 0.08);
+}
+
+/* —— 卡片区在控制条显示时稍微下移 —— */
+.stage.with-bar { padding-top: 90px; }
+
+/* —— 滚动条美化 —— */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(180, 200, 220, 0.4);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--accent-soft); }
+
+/* —— 深色主题：覆盖浅色变量 —— */
+[data-theme="dark"] {
+  --bg-grad-1: #0f1419;
+  --bg-grad-2: #131a22;
+  --bg-grad-3: #0c1116;
+  --card-bg: rgba(26, 32, 39, 0.78);
+  --card-border: rgba(58, 68, 82, 0.5);
+  --bar-bg: rgba(20, 26, 33, 0.82);
+  --bar-border: rgba(58, 68, 82, 0.5);
+  --input-bg: rgba(40, 48, 58, 0.6);
+  --input-border: rgba(80, 92, 106, 0.5);
+  --toggle-dot: #e8e8e8;
+  --audio-filter: invert(0.85) hue-rotate(150deg) saturate(0.6);
+  --text: #e8e8e8;
+  --text-strong: #f0f0f0;
+  --muted: #8b95a3;
+  --muted-soft: #6a7480;
+  --accent: #4dd0c0;
+  --accent-soft: #80cbc4;
+  --accent-deep: #2aa89a;
+  --accent-bg: rgba(77, 208, 192, 0.12);
+  --front-bg: rgba(35, 43, 54, 0.5);
+  --back-bg: rgba(42, 51, 64, 0.55);
+  --divider: rgba(58, 68, 82, 0.5);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.3);
+  --shadow-hover: 0 12px 40px rgba(77, 208, 192, 0.2);
+}
+
+/* —— 主题切换按钮：药丸开关样式 —— */
+.theme-toggle {
+  width: 44px; height: 24px;
+  border-radius: 12px;
+  background: var(--divider);
+  border: none; cursor: pointer;
+  position: relative;
+  transition: background .3s ease;
+  flex-shrink: 0;
+}
+.theme-toggle.on { background: var(--accent); }
+.theme-toggle::after {
+  content: '';
+  position: absolute; top: 3px; left: 3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--toggle-dot);
+  transition: transform .28s cubic-bezier(.22,.61,.36,1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.theme-toggle.on::after { transform: translateX(20px); }
+.theme-toggle:hover { box-shadow: 0 0 0 3px var(--accent-bg); }
+
+/* —— 自动朗读开关：复用药丸样式 —— */
+.auto-play-toggle {
+  width: 44px; height: 24px;
+  border-radius: 12px;
+  background: var(--divider);
+  border: none; cursor: pointer;
+  position: relative;
+  transition: background .3s ease;
+  flex-shrink: 0;
+}
+.auto-play-toggle.on { background: var(--accent); }
+.auto-play-toggle::after {
+  content: '';
+  position: absolute; top: 3px; left: 3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--toggle-dot);
+  transition: transform .28s cubic-bezier(.22,.61,.36,1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.auto-play-toggle.on::after { transform: translateX(20px); }
+.auto-play-toggle:hover { box-shadow: 0 0 0 3px var(--accent-bg); }
+
+/* —— 主题过渡：切换时平滑变色 —— */
+body, .topbar, .keyboard-hint, .card {
+  transition: background-color .4s ease, color .4s ease, border-color .4s ease;
+}
+
+/* —— 音频控件：深色模式下反色 —— */
+.card audio { filter: var(--audio-filter); }
+
+/* —— 深色主题：覆盖 Anki 模板自带的固定颜色 —— */
+[data-theme="dark"] .card {
+  background-color: transparent !important;
+  color: var(--text) !important;
+}
+/* listening 词书：.english 粉色 → 深色半透明 */
+[data-theme="dark"] .english {
+  background-color: rgba(77, 208, 192, 0.12) !important;
+  color: var(--text-strong) !important;
+}
+/* listening 词书：.translate 黄色 → 深色半透明 */
+[data-theme="dark"] .translate {
+  background-color: rgba(255, 209, 128, 0.1) !important;
+  color: var(--text-strong) !important;
+}
+/* listening 词书：.hint 灰色文字 → 浅色 */
+[data-theme="dark"] .hint {
+  color: var(--muted) !important;
+}
+/* 2027 词书：.word / .tree 等文字色 */
+[data-theme="dark"] .word,
+[data-theme="dark"] .tree,
+[data-theme="dark"] .chart,
+[data-theme="dark"] .audio,
+[data-theme="dark"] .lv1,
+[data-theme="dark"] .lv2,
+[data-theme="dark"] .lv3,
+[data-theme="dark"] .zh,
+[data-theme="dark"] b {
+  color: var(--text-strong) !important;
+}
+/* hr 分割线 */
+[data-theme="dark"] hr {
+  border-top-color: var(--divider) !important;
+}

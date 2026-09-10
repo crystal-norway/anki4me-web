@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anki 卡片轮播</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- 顶部触发区：鼠标移入或点击唤出控制条 -->
+<div class="hover-zone" id="hoverZone" aria-hidden="true"></div>
+
+<!-- 控制条：默认隐藏，hover-zone 触发或点击页面时显示 -->
+<div class="topbar" id="topbar">
+  <div>
+    <div class="title" id="title">Anki 卡片轮播</div>
+    <div class="sub" id="sub">加载中…</div>
+  </div>
+  <div class="group">
+    <label>词书</label>
+    <select id="bookSel" disabled><option>加载中…</option></select>
+  </div>
+  <div class="group">
+    <label>牌组</label>
+    <select id="deckSel" disabled><option>全部</option></select>
+  </div>
+  <div class="group">
+    <label>间隔</label>
+    <input type="range" id="interval" min="2" max="60" step="1" value="10">
+    <input type="number" id="intervalNum" min="2" max="60" value="10" style="width:60px"> 秒
+  </div>
+  <div class="group">
+    <label>自动朗读</label>
+    <button class="auto-play-toggle" id="autoPlayToggle" title="切换后自动播放正面音频" aria-pressed="false"></button>
+  </div>
+  <div class="group">
+    <label>深色</label>
+    <button class="theme-toggle" id="themeToggle" title="切换深色/浅色主题" aria-pressed="false"></button>
+  </div>
+  <div class="progress"><div class="bar" id="progressBar"></div></div>
+  <button id="prevBtn" title="上一张">◀ 上一张</button>
+  <button id="pauseBtn" title="空格 暂停/继续">⏸ 暂停</button>
+  <button id="nextBtn" title="下一张">下一张 ▶</button>
+</div>
+
+<div class="stage">
+  <div class="card" id="cardEl" style="display:none">
+    <div class="meta">
+      <span class="idx" id="metaIdx">#0</span>
+      <span class="deck" id="metaDeck">—</span>
+      <span class="tags" id="metaTags"></span>
+    </div>
+    <div class="body">
+      <div class="face front">
+        <div class="label">正面</div>
+        <div class="inner" id="frontInner"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="face back">
+        <div class="label">背面</div>
+        <div class="inner" id="backInner"></div>
+      </div>
+    </div>
+  </div>
+  <div class="empty" id="emptyEl">正在加载 cards.json …</div>
+</div>
+
+<div class="keyboard-hint" id="kbdHint">
+  <kbd>空格</kbd> 暂停/继续 · <kbd>←</kbd> 上一张 · <kbd>→</kbd> 下一张 · <kbd>R</kbd> 立即随机 · <kbd>H</kbd> 隐藏面板
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
