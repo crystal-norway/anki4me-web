@@ -111,10 +111,17 @@
     fetch(DATA_BASE + file)
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
+        // .gz 文件用 DecompressionStream 解压
+        if (file.endsWith('.gz')) {
+          return r.body.pipeThrough(new DecompressionStream('gzip'));
+        }
+        return r.body;
       })
-      .then(function (data) {
-        DATA = data;
+      .then(function (stream) {
+        return new Response(stream).text();
+      })
+      .then(function (text) {
+        DATA = JSON.parse(text);
         if (cb) cb();
       })
       .catch(function (err) {
